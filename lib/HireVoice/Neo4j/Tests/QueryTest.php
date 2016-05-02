@@ -29,6 +29,8 @@ class QueryTest extends TestCase
     static $root;
     static $aragorn;
     static $legolas;
+    static $rating;
+    static $category;
 
     function setUp()
     {
@@ -47,12 +49,24 @@ class QueryTest extends TestCase
             $root->addActor($aragorn);
             $root->addActor($legolas);
 
+            $rating = new Entity\Rating();
+            $rating->setValue(10);
+            $rating->setMovie($root);
+
+            $category = new Entity\MovieCategory();
+            $category->setTitle('Fantasy');
+            $category->addMovie($root);
+
             self::$root = $root;
             self::$aragorn = $aragorn;
             self::$legolas = $legolas;
+            self::$rating = $rating;
+            self::$category = $category;
 
             $em = $this->getEntityManager();
+            $em->persist($rating);
             $em->persist($root);
+            $em->persist($category);
             $em->flush();
         }
     }
@@ -470,5 +484,31 @@ class QueryTest extends TestCase
                 "n2" => "Viggo"
             )
         ), $result->toArray());
+    }
+
+
+    /**
+     * WIP I still have good result without changing the match() method
+     * the chaining of MATCH clauses with a comma works...
+     *
+     * @group neo4j-v3
+     * MATCH (n:List)-[:contains]->(m:Product)
+     * MATCH (m:Product)-[*]->(s:ProductSector)
+     * MATCH (r:Rating)-[:object]->(m:Product)
+     * MATCH (r:Rating)-[:hasType]->(g:RatingGroup)
+     */
+    function testCypherMultipleDistinctMatchClauses()
+    {
+        $em = $this->getEntityManager();
+        $result = $em->createCypherQuery()
+            ->startWithNode('movie', self::$root)
+            ->match('(movie) -[:actor]-> (actor)')
+            ->match('(movie) -[:isRated]-> (rating)')
+            ->match('(movie) -[:hasCategory]-> (category { title: "Fantasy" })')
+            ->end('actor.firstName as actor, movie.title as title, rating.value, category.title')
+            ->order('rating.value DESC')
+            ->getResult();
+
+        print_r($result->toArray());
     }
 }

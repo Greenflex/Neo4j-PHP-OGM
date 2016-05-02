@@ -201,13 +201,19 @@ class Cypher extends Query
     /**
      * @api
      * @param string $string
+     * @param bool $isUniqueness
      * @return Cypher
      */
-    public function match($string)
+    public function match($string, $isUniqueness = false)
     {
-        return $this->appendToQuery(self::CLAUSE_MATCH, func_get_args());
-    }
+        $args = array(
+            'pattern' => $string,
+            'uniqueness' => $isUniqueness
 
+        );
+
+        return $this->appendToQuery(self::CLAUSE_MATCH, $args);
+    }
     /**
      * @api
      * @param string $string
@@ -320,6 +326,14 @@ class Cypher extends Query
     protected function appendToQuery($clause, $args)
     {
         switch ($clause) {
+            case self::CLAUSE_MATCH:
+                if ($this->currentClause !== $clause || false === $args['uniqueness']) {
+                    $this->query .= PHP_EOL . $clause . ' ' . $args['pattern'];
+                } else {
+                    $this->query .= ',' . $args['pattern'];
+                }
+                break;
+
             case self::CLAUSE_WHERE:
                 if ($this->currentClause !== $clause) {
                     $this->query .= PHP_EOL . $clause . ' (' . implode(') AND (', $args) . ')';
