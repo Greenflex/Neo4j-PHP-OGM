@@ -657,17 +657,21 @@ class EntityManager
 
     private function removePreviousRelations($a, $b, $relation, $direction)
     {
-        if (strtolower($direction) == 'to') {
-            $tmp = $a;
-            $a = $b;
-            $b = $tmp;
-        }
-        $node = $this->getLoadedNode($a);
-        $relations = $this->getRelationsFrom($node, $relation);
+        $a = $this->getLoadedNode($a);
+        $b = $this->getLoadedNode($b);
+
+        $relations = $this->getRelationsFrom($a, $relation);
 
         foreach ($relations as $r) {
-            if (basename($r['end']) != $b->getId()) {
-                $this->deleteRelationship($r);
+            if (strtolower($direction) == 'to') {
+                // We must be careful and don't remove relations from other nodes
+                if (basename($r['end']) == $a->getId() && basename($r['start']) != $b->getId()) {
+                    $this->deleteRelationship($r);
+                }
+            } else {
+                if (basename($r['end']) != $b->getId()) {
+                    $this->deleteRelationship($r);
+                }
             }
         }
     }
